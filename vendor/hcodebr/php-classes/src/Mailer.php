@@ -4,8 +4,8 @@ namespace Hcode;
 use Rain\Tpl;
 
 class Mailer{
-	const USERNAME = "silviacostaazul@gmail.com";
-	const PASSWORD = "rafa1234";
+	const USERNAME = "suportdexter18@gmail.com";
+	const PASSWORD = "laboratoriodexter";
 	const NAME_FROM = "Hcode Store";
 	
 	private $mail;
@@ -22,10 +22,19 @@ class Mailer{
 			$tpl->assign($key, $value);
 		}
 		$html = $tpl->draw($tplName, true);
+		
 		$this->mail = new \PHPMailer;
+		
 		$this->mail->CharSet = 'UTF-8';
 		//Tell PHPMailer to use SMTP
 		$this->mail->isSMTP();
+		$this->mail->SMTPOptions = array(
+   		 'ssl' => array(
+        'verify_peer' => false,
+        'verify_peer_name' => false,
+        'allow_self_signed' => true
+    			)
+		 );
 		//Enable SMTP debugging
 		// 0 = off (for production use)
 		// 1 = client messages
@@ -33,16 +42,18 @@ class Mailer{
 		$this->mail->SMTPDebug = 0;
 		$this->mail->Debugoutput = 'html';
 		//Set the hostname of the mail server
-		$this->mail->Host = "smtp.liderinvestbr.com.br";
+		$this->mail->Host ='smtp.gmail.com';
 		// use
 		// $mail->Host = gethostbyname('smtp.gmail.com');
 		// if your network does not support SMTP over IPv6
 		
 		//Set the SMTP port number - 587 for authenticated TLS, a.k.a. RFC4409 SMTP submission
 		$this->mail->Port = 587;
+
+		$this->mail->SMTPSecure = 'tsl';
 				//Set the encryption system to use - ssl (deprecated) or tls
-		$this->mail->SMTPSecure = false;
-		$this->mail->SMTPAutoTLS = false;
+		//$this->mail->SMTPSecure = false;
+		//$this->mail->SMTPAutoTLS = false;
 		//Whether to use SMTP authentication
 		$this->mail->SMTPAuth = true;
 		//Username to use for SMTP authentication - use full email address for gmail
