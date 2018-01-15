@@ -147,58 +147,115 @@ class User extends Model {
 		));
 	}
 
-	public static function getForgot($email){
-
-		$sql = new Sql();
-
-		$results = $sql->select("
-			SELECT *
-			FROM tb_person a
-			INNER JOIN tb_users b USING(idperson)
-			WHERE a.desemail = :email;
-			", array(
-				":email"=>$email
-			));
-		if (count($results) === 0){
-
-			throw new \Exception("Não foi possível recuperar a senha");
-		}
-		else {
-
-			$data = $results[0];
-
-			$results2 = $sql->select("CALL sp_userspasswordsrecoveries_create(:iduser, :desip)", array(
-			  ":iduser"=>$data["iduser"],
-		      ":desip"=>$_SERVER["REMOTE_ADDR"]
-			));
-
-			if (cout($results2) === 0){
-
-				throw new \Exception("Não foi possível recuperar a senha.");
-				
-			}
-
-			else {
-
-				$dataRecovery = $results2[0];
-
-				$code = base64_encode(mcrypt_encrypt(MCRYPT_RIJNDAEL_128, User::SECRET, $dataRecovery["idrecovery"], MCRYPT_MODE_ECB));
-
-				$link = "http://hcodecommerce.com.br/admin/forgot/reset?code=$code";
-
-				 $mailer = new Mailer($data["desemail"], $data["desperson"], "Redefinir Senha da Hcode Store", "forgot", array(
-
-				 	"name"=>$data["desperson"],
-				 	"link"=>$link
-
-				 ));
-
-				 $mailer->send();
-
-				 return $data;
-			}
-		}
-	}
+	public static function encrypt_decrypt($action, $string) {
+        $output         = false;
+        $encrypt_method = "AES-256-CBC";
+        $secret_key     = 'This is my secret key';
+        $secret_iv      = 'This is my secret iv';
+        // hash
+        $key = hash('sha256', $secret_key);
+ 
+        // iv - encrypt method AES-256-CBC expects 16 bytes - else you will get a warning
+        $iv = substr(hash('sha256', $secret_iv), 0, 16);
+        if ($action == 'encrypt') {
+            $output = openssl_encrypt($string, $encrypt_method, $key, 0, $iv);
+            $output = base64_encode($output);
+        } else if ($action == 'decrypt') {
+            $output = openssl_decrypt(base64_decode($string), $encrypt_method, $key, 0, $iv);
+        }
+        return $output;
+    }
+ 
+    /**
+     * [getForgot] Verifica se o email digitado existe
+     * se existir Envia o email para alteração de senha
+     */
+    public static function getForgot($email) {
+ 
+        $sql     = new Sql();
+        $results = $sql->select(
+            "SELECT * FROM tb_persons a
+            INNER JOIN tb_users b USING(idperson)
+            WHERE a.desemail = :email",
+            array(
+                ":email" => $email,
+            ));
+ 
+        if (count($results) === 0) {
+            throw new \Exception("Não foi possível recuperar a senha.");
+        } else {
+            $data     = $results[0];
+            $results2 = $sql->select(
+                "CALL sp_userspasswordsrecoveries_create(:iduser, :desip)",
+                array(
+                    ":iduser" => $data["iduser"],
+                    ":desip"  => $_SERVER["REMOTE_ADDR"],
+                ));
+        }
+ 
+        if (count($results2) === 0) {
+            throw new \Exception("Não foi possível recuperar a senha.");
+ 
+        } else {
+            $dataRecovery = $results2[0];
+ 
+            // Gerar código encripitado
+            /*$plaintext = "message to be encrypted";// length=23
+            $cipher    = "aes-128-gcm";// length=11
+ 
+            if (in_array($cipher, openssl_get_cipher_methods())) {
+            $ivlen = openssl_cipher_iv_length($cipher);
+            $iv    = openssl_random_pseudo_bytes($ivlen);
+            $code  = openssl_encrypt($plaintext, $cipher, $dataRecovery["idrecovery"], $options = 0, $iv, $tag);
+            //store $cipher, $iv, and $tag for decryption later
+            //$original_plaintext = openssl_decrypt($ciphertext, $cipher, $key, $options = 0, $iv, $tag);
+            //echo $original_plaintext."\n";
+            }*/
+            $code = User::encrypt_decrypt('encrypt', $dataRecovery["idrecovery"]);
+ 
+            $link   = "http://ecommerce.admin.dev/admin/forgot/reset?code=$code";
+            $mailer = new Mailer(
+                $data["desemail"],
+                $data["desperson"],
+                "Redefinir senha da Ecom",
+                "forgot",
+                array(
+                    "name" => $data["desperson"],
+                    "link" => $link,
+                )
+            );
+ 
+            $mailer->send();// Envia o email
+ 
+            return $data;// Dados do usuário
+        }
+ 
+    }
+    public static function validForgotDecrypt($code) {
+        var_dump($code);
+ 
+        $idrecovery = User::encrypt_decrypt('decrypt', $code);
+        var_dump($idrecovery);
+ 
+        $sql     = new Sql();
+        $results = $sql->select(
+            "SELECT * FROM tb_userspasswordsrecoveries a
+            INNER JOIN tb_users b USING(iduser)
+            INNER JOIN tb_persons c USING(idperson)
+            WHERE a.idrecovery = :idrecovery
+            AND a.dtrecovery IS NULL
+            AND DATE_ADD(a.dtregister, INTERVAL 1 HOUR) >= NOW()
+            ", array(
+                ":idrecovery" => $idrecovery,
+            ));
+ 
+        if (count($results) === 0) {
+            throw new \Exception("Não foi possível recuperar a senha.");
+ 
+        } else {
+            return $results[0];
+        }
+    }
 }
 
 
