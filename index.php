@@ -291,7 +291,7 @@ $app->get("/admin/categories/:idcategory",function($idcategory){
 $app->post("/admin/categories/:idcategory",function($idcategory){
 
 	User::verifyLogin();
-	
+
 	$category = new Category();
 
 	$category->get((int)$idcategory);
@@ -304,6 +304,8 @@ $app->post("/admin/categories/:idcategory",function($idcategory){
 	exit;
 
 });
+
+$app->get("/categories/:idcategory")
 
 $app->run();
 
